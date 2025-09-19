@@ -12,15 +12,25 @@ metadata:
     app.kubernetes.io/managed-by: Helm
   
 rules:
-- apiGroups:
-  - "coordination.k8s.io"
-  resources:
-  - leases
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
+  # ---
+  # Required for cost savings estimation features.
+  # ---
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  # ---
+  # Required for proportional vertical cluster autoscaler to adjust glasswing-agent requests/limits.
+  # ---
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+    resourceNames:
+      - glasswing-agent
+    verbs:
+      - patch

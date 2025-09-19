@@ -10,9 +10,131 @@ metadata:
     app.kubernetes.io/version: "0.6.3-beta.0"
     app.kubernetes.io/managed-by: Helm
   
-aggregationRule:
-  clusterRoleSelectors:
-  - matchLabels:
-      rbac.agent.glasswing.cloud/aggregate-to-controllers: "true"
-  - matchLabels:
-      rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - nodes
+      - replicationcontrollers
+      - persistentvolumeclaims
+      - persistentvolumes
+      - services
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+      - replicasets
+      - daemonsets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "storage.k8s.io"
+    resources:
+      - storageclasses
+      - csinodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "batch"
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "autoscaling"
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - "metrics.k8s.io"
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - "policy"
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "datadoghq.com"
+    resources:
+      - extendeddaemonsetreplicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "argoproj.io"
+    resources:
+      - rollouts
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "autoscaling.glasswing.cloud"
+    resources:
+      - recommendations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "autoscaling.glasswing.cloud"
+    resources:
+      - verticalscalingconfigurations
+      - verticalscalingconfigurations/status
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - delete
+  - nonResourceURLs:
+      - "/version"
+    verbs:
+      - "get"

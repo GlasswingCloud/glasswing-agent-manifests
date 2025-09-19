@@ -48,7 +48,7 @@ spec:
         
           args:
              - agent
-             - --snapshot-interval=15s
+             - --controller-interval=15s
              - --v=5
           imagePullPolicy: Always
           terminationMessagePolicy: FallbackToLogsOnError
