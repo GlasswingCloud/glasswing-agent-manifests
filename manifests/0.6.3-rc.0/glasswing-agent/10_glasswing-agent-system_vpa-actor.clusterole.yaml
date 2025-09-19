@@ -1,0 +1,53 @@
+# add permissions for agent to manage VPA
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: "glasswing-agent-system:vpa-actor"
+  labels:
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.6.3-rc.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - "autoscaling.k8s.io"
+    resources:
+      - verticalpodautoscalers
+      - verticalpodautoscalers/status
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - watch
+      - patch
+      - delete
+  - apiGroups:
+      - "autoscaling.glasswing.cloud"
+    resources:
+      - recommendations
+      - oominfos
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - watch
+      - delete
+  - apiGroups:
+      - "autoscaling.glasswing.cloud"
+    resources:
+      - recommendations/status
+      - oominfos/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups: # required for agent to evict pods when restoring original requests/limits
+      - ""
+    resources:
+      - pods/eviction
+    verbs:
+      - create

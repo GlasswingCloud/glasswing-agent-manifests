@@ -1,9 +1,31 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:evictioner
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+rules:
+  - apiGroups:
+      - "apps"
+      - "extensions"
+    resources:
+      - replicasets
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - pods/eviction
+    verbs:
+      - create
+
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  name: verticalpodautoscalercheckpoints.autoscaling.k8s.io
   annotations:
     api-approved.kubernetes.io: https://github.com/kubernetes/kubernetes/pull/63797
-  name: verticalpodautoscalercheckpoints.autoscaling.k8s.io
 spec:
   group: autoscaling.k8s.io
   names:
@@ -108,13 +130,14 @@ spec:
         type: object
     served: true
     storage: true
+
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  name: verticalpodautoscalers.autoscaling.k8s.io
   annotations:
     api-approved.kubernetes.io: https://github.com/kubernetes/kubernetes/pull/63797
-  name: verticalpodautoscalers.autoscaling.k8s.io
 spec:
   group: autoscaling.k8s.io
   names:
@@ -452,321 +475,43 @@ spec:
     storage: true
     subresources:
       status: {}
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: admission-controller
-  namespace: glasswing-agent
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: cert-generator-sa
-  namespace: glasswing-agent
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: vpa-admission-controller
-  namespace: glasswing-agent
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: vpa-recommender
-  namespace: glasswing-agent
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: vpa-updater
-  namespace: glasswing-agent
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: cert-generator-role
-  namespace: glasswing-agent
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - create
-  - patch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: glasswing-agent:leader-locking-vpa-recommender
-  namespace: glasswing-agent
-rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-- apiGroups:
-  - coordination.k8s.io
-  resourceNames:
-  - vpa-recommender
-  resources:
-  - leases
-  verbs:
-  - get
-  - watch
-  - update
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: glasswing-agent:leader-locking-vpa-updater
-  namespace: glasswing-agent
-rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-- apiGroups:
-  - coordination.k8s.io
-  resourceNames:
-  - vpa-updater
-  resources:
-  - leases
-  verbs:
-  - get
-  - watch
-  - update
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: glasswing-vpa
-  name: glasswing-agent:evictioner
-rules:
-- apiGroups:
-  - apps
-  - extensions
-  resources:
-  - replicasets
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
-  - pods/eviction
-  verbs:
-  - create
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    app.kubernetes.io/name: glasswing-vpa
   name: glasswing-agent:vpa-actor
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - nodes
-  - limitranges
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-- apiGroups:
-  - autoscaling.k8s.io
-  resources:
-  - verticalpodautoscalers
-  verbs:
-  - get
-  - list
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
   labels:
     app.kubernetes.io/name: glasswing-vpa
-  name: glasswing-agent:vpa-admission-controller
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - configmaps
-  - nodes
-  - limitranges
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-- apiGroups:
-  - autoscaling.k8s.io
-  resources:
-  - verticalpodautoscalers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - update
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resourceNames:
-  - vpa-tls-certs
-  resources:
-  - secrets
-  verbs:
-  - get
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: glasswing-agent:vpa-status-actor
-rules:
-- apiGroups:
-  - autoscaling.k8s.io
-  resources:
-  - verticalpodautoscalers/status
-  verbs:
-  - get
-  - patch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    app.kubernetes.io/name: glasswing-vpa
-  name: glasswing-agent:vpa-status-reader
-rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - get
-  - list
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  labels:
-    app.kubernetes.io/name: glasswing-vpa
-  name: glasswing-agent:vpa-target-reader
-rules:
-- apiGroups:
-  - '*'
-  resources:
-  - '*/scale'
-  verbs:
-  - get
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - replicationcontrollers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  - deployments
-  - replicasets
-  - statefulsets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: cert-generator-rolebinding
-  namespace: glasswing-agent
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: cert-generator-role
-subjects:
-- kind: ServiceAccount
-  name: cert-generator-sa
-  namespace: glasswing-agent
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: glasswing-agent:leader-locking-vpa-recommender
-  namespace: glasswing-agent
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: glasswing-agent:leader-locking-vpa-recommender
-subjects:
-- kind: ServiceAccount
-  name: vpa-recommender
-  namespace: glasswing-agent
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: glasswing-agent:leader-locking-vpa-updater
-  namespace: glasswing-agent
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: glasswing-agent:leader-locking-vpa-updater
-subjects:
-- kind: ServiceAccount
-  name: vpa-updater
-  namespace: glasswing-agent
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - nodes
+      - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+  - apiGroups:
+      - "autoscaling.k8s.io"
+    resources:
+      - verticalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -777,9 +522,61 @@ roleRef:
   kind: ClusterRole
   name: glasswing-agent:vpa-actor
 subjects:
-- kind: ServiceAccount
-  name: vpa-updater
-  namespace: glasswing-agent
+  - kind: ServiceAccount
+    name: vpa-updater
+    namespace: glasswing-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:vpa-admission-controller
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - configmaps
+      - nodes
+      - limitranges
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "admissionregistration.k8s.io"
+    resources:
+      - mutatingwebhookconfigurations
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+  - apiGroups:
+      - "autoscaling.k8s.io"
+    resources:
+      - verticalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+      - update
+      - get
+      - list
+      - watch
+  - apiGroups: [""] # startup probe
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["vpa-tls-certs"]
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -790,9 +587,10 @@ roleRef:
   kind: ClusterRole
   name: glasswing-agent:vpa-admission-controller
 subjects:
-- kind: ServiceAccount
-  name: vpa-admission-controller
-  namespace: glasswing-agent
+  - kind: ServiceAccount
+    name: vpa-admission-controller
+    namespace: glasswing-agent
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -803,9 +601,24 @@ roleRef:
   kind: ClusterRole
   name: glasswing-agent:evictioner
 subjects:
-- kind: ServiceAccount
-  name: vpa-updater
-  namespace: glasswing-agent
+  - kind: ServiceAccount
+    name: vpa-updater
+    namespace: glasswing-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:vpa-status-actor
+rules:
+  - apiGroups:
+      - "autoscaling.k8s.io"
+    resources:
+      - verticalpodautoscalers/status
+    verbs:
+      - get
+      - patch
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -816,9 +629,27 @@ roleRef:
   kind: ClusterRole
   name: glasswing-agent:vpa-status-reader
 subjects:
-- kind: ServiceAccount
-  name: vpa-updater
-  namespace: glasswing-agent
+  - kind: ServiceAccount
+    name: vpa-updater
+    namespace: glasswing-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:vpa-status-reader
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+rules:
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -829,137 +660,201 @@ roleRef:
   kind: ClusterRole
   name: glasswing-agent:vpa-target-reader
 subjects:
-- kind: ServiceAccount
-  name: vpa-admission-controller
-  namespace: glasswing-agent
-- kind: ServiceAccount
-  name: vpa-updater
-  namespace: glasswing-agent
+  - kind: ServiceAccount
+    name: vpa-admission-controller
+    namespace: glasswing-agent
+  - kind: ServiceAccount
+    name: vpa-updater
+    namespace: glasswing-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:vpa-target-reader
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+rules:
+  - apiGroups:
+    - '*'
+    resources:
+    - '*/scale'
+    verbs:
+    - get
+    - watch
+  - apiGroups:
+      - ""
+    resources:
+      - replicationcontrollers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - daemonsets
+      - deployments
+      - replicasets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+
 ---
 apiVersion: v1
-kind: Service
+kind: ServiceAccount
 metadata:
-  name: vpa-webhook
+  name: admission-controller
   namespace: glasswing-agent
-spec:
-  ports:
-  - port: 443
-    targetPort: 8443
-  selector:
-    app: vpa-admission-controller
+
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-generator-role
+  namespace: glasswing-agent
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - create
+  - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-generator-rolebinding
+  namespace: glasswing-agent
+subjects:
+- kind: ServiceAccount
+  name: cert-generator-sa
+  namespace: glasswing-agent
+roleRef:
+  kind: Role
+  name: cert-generator-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-generator-sa
+  namespace: glasswing-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: glasswing-agent:leader-locking-vpa-recommender
+  namespace: glasswing-agent
+rules:
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+  - apiGroups:
+      - "coordination.k8s.io"
+    resourceNames:
+      - vpa-recommender
+    resources:
+      - leases
+    verbs:
+      - get
+      - watch
+      - update
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: glasswing-agent:leader-locking-vpa-recommender
+  namespace: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: glasswing-agent:leader-locking-vpa-recommender
+subjects:
+  - kind: ServiceAccount
+    name: vpa-recommender
+    namespace: glasswing-agent
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: glasswing-agent:leader-locking-vpa-updater
+  namespace: glasswing-agent
+rules:
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+  - apiGroups:
+      - "coordination.k8s.io"
+    resourceNames:
+      - vpa-updater
+    resources:
+      - leases
+    verbs:
+      - get
+      - watch
+      - update
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: glasswing-agent:leader-locking-vpa-updater
+  namespace: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: glasswing-agent:leader-locking-vpa-updater
+subjects:
+  - kind: ServiceAccount
+    name: vpa-updater
+    namespace: glasswing-agent
+
+---
+apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: vpa-admission-controller
   namespace: glasswing-agent
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: vpa-admission-controller
-  template:
-    metadata:
-      labels:
-        app: vpa-admission-controller
-    spec:
-      containers:
-      - args:
-        - --v=4
-        - --stderrthreshold=info
-        - --reload-cert
-        - --port=8443
-        env:
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        image: registry.k8s.io/autoscaling/vpa-admission-controller:1.2.1
-        imagePullPolicy: Always
-        name: admission-controller
-        ports:
-        - containerPort: 8443
-        - containerPort: 8944
-          name: prometheus
-        resources:
-          limits:
-            cpu: 200m
-            memory: 1000Mi
-          requests:
-            cpu: 50m
-            memory: 500Mi
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /etc/tls-certs
-          name: tls-certs
-          readOnly: true
-      initContainers:
-      - command:
-        - /bin/sh
-        - -c
-        - |
-          while true; do
-            secret_inited=$(kubectl get secret vpa-tls-certs -n glasswing-agent -o jsonpath='{.data.caCert\.pem}' | grep -q . && echo "true" || echo "false")
-            if [ "$secret_inited" = "true" ]; then
-              echo "Secret vpa-tls-certs is ready."
-              break
-            else
-              echo "Waiting for Secret vpa-tls-certs to be ready..."
-              sleep 5
-            fi
-          done
-        image: quay.io/glasswing/kubectl:1.33.4-bitnami
-        imagePullPolicy: IfNotPresent
-        name: wait-for-tls-ready
-        terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-      serviceAccountName: vpa-admission-controller
-      volumes:
-      - name: tls-certs
-        secret:
-          secretName: vpa-tls-certs
+
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vpa-recommender
+  namespace: glasswing-agent
+
+---
+apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: vpa-updater
   namespace: glasswing-agent
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: vpa-updater
-  template:
-    metadata:
-      labels:
-        app: vpa-updater
-    spec:
-      containers:
-      - env:
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        image: registry.k8s.io/autoscaling/vpa-updater:1.2.1
-        imagePullPolicy: Always
-        name: updater
-        ports:
-        - containerPort: 8943
-          name: prometheus
-        resources:
-          limits:
-            cpu: 200m
-            memory: 1000Mi
-          requests:
-            cpu: 50m
-            memory: 500Mi
-        terminationMessagePolicy: FallbackToLogsOnError
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-      serviceAccountName: vpa-updater
+
 ---
 apiVersion: batch/v1
 kind: Job
@@ -969,8 +864,11 @@ metadata:
 spec:
   template:
     spec:
+      serviceAccountName: cert-generator-sa
       containers:
-      - command:
+      - name: cert-generator
+        image: quay.io/glasswing/kubectl:1.33.4-bitnami
+        command:
         - /bin/sh
         - -c
         - |
@@ -1009,8 +907,6 @@ spec:
 
           echo "set secret to immutable"
           kubectl patch secret vpa-tls-certs --namespace=glasswing-agent -p '{"immutable":true}'
-        image: quay.io/glasswing/kubectl:1.33.4-bitnami
-        name: cert-generator
         resources:
           limits:
             cpu: 100m
@@ -1019,4 +915,131 @@ spec:
             cpu: 50m
             memory: 100Mi
       restartPolicy: OnFailure
-      serviceAccountName: cert-generator-sa
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpa-webhook
+  namespace: glasswing-agent
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    app: vpa-admission-controller
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpa-admission-controller
+  namespace: glasswing-agent
+  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpa-admission-controller
+  template:
+    metadata:
+      labels:
+        app: vpa-admission-controller
+    spec:
+      serviceAccountName: vpa-admission-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534 # nobody
+      initContainers:
+        - name: wait-for-tls-ready
+          image: quay.io/glasswing/kubectl:1.33.4-bitnami
+          imagePullPolicy: IfNotPresent
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                secret_inited=$(kubectl get secret vpa-tls-certs -n glasswing-agent -o jsonpath='{.data.caCert\.pem}' | grep -q . && echo "true" || echo "false")
+                if [ "$secret_inited" = "true" ]; then
+                  echo "Secret vpa-tls-certs is ready."
+                  break
+                else
+                  echo "Waiting for Secret vpa-tls-certs to be ready..."
+                  sleep 5
+                fi
+              done
+      containers:
+        - name: admission-controller
+          image: "registry.k8s.io/autoscaling/vpa-admission-controller:1.2.1"
+          imagePullPolicy: "Always"
+          terminationMessagePolicy: FallbackToLogsOnError
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args: ["--v=4", "--stderrthreshold=info", "--reload-cert",--port=8443]
+          volumeMounts:
+            - name: tls-certs
+              mountPath: "/etc/tls-certs"
+              readOnly: true
+          ports:
+            - containerPort: 8443
+            - name: prometheus
+              containerPort: 8944
+          resources:
+            limits:
+              cpu: 200m
+              memory: 1000Mi
+            requests:
+              cpu: 50m
+              memory: 500Mi
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: vpa-tls-certs
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpa-updater
+  namespace: glasswing-agent
+  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpa-updater
+  template:
+    metadata:
+      labels:
+        app: vpa-updater
+    spec:
+      serviceAccountName: vpa-updater
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534 # nobody
+      containers:
+        - name: updater
+          image: "registry.k8s.io/autoscaling/vpa-updater:1.2.1"
+          imagePullPolicy: "Always"
+          terminationMessagePolicy: FallbackToLogsOnError
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - name: prometheus
+              containerPort: 8943
+          resources:
+            limits:
+              cpu: 200m
+              memory: 1000Mi
+            requests: 
+              cpu: 50m
+              memory: 500Mi
+
+---
