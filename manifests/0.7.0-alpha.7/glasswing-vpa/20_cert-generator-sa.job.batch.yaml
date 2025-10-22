@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-tls-secret
+  namespace: glasswing-agent
+spec:
+  template:
+    spec:
+      serviceAccountName: cert-generator-sa
+      containers:
+      - name: cert-generator
+        image: quay.io/glasswing/kubectl:1.33.4-bitnami
+        command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /tmp/vpa-certs
+          cat > /tmp/vpa-certs/server.conf << EOF
+          [req]
+          req_extensions = v3_req
+          distinguished_name = req_distinguished_name
+          [req_distinguished_name]
+          [ v3_req ]
+          basicConstraints = CA:FALSE
+          keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+          extendedKeyUsage = clientAuth, serverAuth
+          subjectAltName = DNS:vpa-webhook.glasswing-agent.svc
+          EOF
+
+          # Create a certificate authority
+          openssl genrsa -out /tmp/vpa-certs/caKey.pem 2048
+          set +o errexit
+          openssl req -x509 -new -nodes -key /tmp/vpa-certs/caKey.pem -days 100000 -out /tmp/vpa-certs/caCert.pem -subj "/CN=vpa_webhook_ca" -addext "subjectAltName = DNS:vpa_webhook_ca"
+          if [[ $? -ne 0 ]]; then
+            echo "ERROR: Failed to create CA certificate for self-signing. If the error is \"unknown option -addext\", update your openssl version or deploy VPA from the vpa-release-0.8 branch."
+            exit 1
+          fi
+          set -o errexit
+
+          # Create a server certificate
+          openssl genrsa -out /tmp/vpa-certs/serverKey.pem 2048
+
+          # Note the CN is the DNS name of the service of the webhook.
+          openssl req -new -key /tmp/vpa-certs/serverKey.pem -out /tmp/vpa-certs/server.csr -subj "/CN=vpa-webhook.glasswing-agent.svc" -config /tmp/vpa-certs/server.conf
+          openssl x509 -req -in /tmp/vpa-certs/server.csr -CA /tmp/vpa-certs/caCert.pem -CAkey /tmp/vpa-certs/caKey.pem -CAcreateserial -out /tmp/vpa-certs/serverCert.pem -days 100000 -extensions SAN -extensions v3_req -extfile /tmp/vpa-certs/server.conf
+
+          echo "Uploading certs to the cluster."
+          kubectl create secret --namespace=glasswing-agent generic vpa-tls-certs --from-file=/tmp/vpa-certs/caKey.pem --from-file=/tmp/vpa-certs/caCert.pem --from-file=/tmp/vpa-certs/serverKey.pem --from-file=/tmp/vpa-certs/serverCert.pem --dry-run=client -o yaml | kubectl apply --server-side --field-manager=gw-cert-generator -f -
+
+          echo "set secret to immutable"
+          kubectl patch secret vpa-tls-certs --namespace=glasswing-agent -p '{"immutable":true}'
+        resources:
+          limits:
+            cpu: 100m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+      restartPolicy: OnFailure
