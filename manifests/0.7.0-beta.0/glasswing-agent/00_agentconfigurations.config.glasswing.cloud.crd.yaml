@@ -1,0 +1,277 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: agentconfigurations.config.glasswing.cloud
+spec:
+  group: config.glasswing.cloud
+  names:
+    kind: AgentConfiguration
+    listKind: AgentConfigurationList
+    plural: agentconfigurations
+    singular: agentconfiguration
+  scope: Cluster
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: AgentConfiguration holds Agent configuration.
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: spec defines the desired state of this AgentConfiguration.
+              properties:
+                clusterName:
+                  description: |-
+                    clusterName sets an explicit cluster name.
+                    If not set, the agent will try to infer it from cluster provider APIs.
+                  type: string
+                providerTypes:
+                  description: |-
+                    providerTypes sets infra providers to use.
+                    If not set, the agent will try to infer it from the cluster or infra provider APIs.
+                  items:
+                    description: InfraProviderChoiceType defines which infra provider to use.
+                    enum:
+                      - Auto-detect
+                      - BareMetal
+                      - EKS
+                      - GKE
+                    type: string
+                  maxItems: 1
+                  type: array
+              type: object
+            status:
+              description: status is the current status of this AgentConfiguration.
+              properties:
+                cloudProvider:
+                  description: |-
+                    cloudProvider is a name that identifies the infra provider that was in the Spec,
+                    or inferred by the agent.
+                  enum:
+                    - BareMetal
+                    - EKS
+                    - GKE
+                  type: string
+                clusterID:
+                  description: clusterID is the unique and immutable ID of this Kubernetes cluster.
+                  type: string
+                clusterName:
+                  description: |-
+                    cluster name is the cluster name that was either set explicitly in the Spec,
+                    or inferred from the cluster provider APIs.
+                  type: string
+                collectedResources:
+                  description: required holds resources that are collected because the platform needs them.
+                  properties:
+                    discovered:
+                      description: |-
+                        discovered holds the resources that have been marked for collection after
+                        inspecting Kubernetes discovery information.
+                        E.g., to find custom resources supporting /scale subresource.
+                      items:
+                        description: GroupVersionResource describes a versioned resource.
+                        properties:
+                          group:
+                            description: group is the group portion of the GroupVersionResource.
+                            type: string
+                          resource:
+                            description: resource is the resource portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                          version:
+                            description: version is the version portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                        required:
+                          - group
+                          - resource
+                          - version
+                        type: object
+                      type: array
+                    inaccessible:
+                      description: inaccessible holds resources that can't be collected due to insufficient permissions.
+                      items:
+                        description: InaccessibleResource describes a resource that didn't pass a SelfSubjectAccessReview before being collected.
+                        properties:
+                          denied:
+                            description: |-
+                              denied indicates whether this was an explicit denial.
+                              Authorizers are allowed to have no opinion.
+                            type: boolean
+                          group:
+                            description: group is the group portion of the GroupVersionResource.
+                            type: string
+                          resource:
+                            description: resource is the resource portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                          verb:
+                            description: verb is a kubernetes resource API verb.
+                            type: string
+                          version:
+                            description: version is the version portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                        required:
+                          - denied
+                          - group
+                          - resource
+                          - verb
+                          - version
+                        type: object
+                      type: array
+                    referenced:
+                      description: |-
+                        referenced holds resources that are collected because they are
+                        part of an owner reference chain from, or to a resource that's being collected.
+                      items:
+                        description: GroupVersionResource describes a versioned resource.
+                        properties:
+                          group:
+                            description: group is the group portion of the GroupVersionResource.
+                            type: string
+                          resource:
+                            description: resource is the resource portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                          version:
+                            description: version is the version portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                        required:
+                          - group
+                          - resource
+                          - version
+                        type: object
+                      type: array
+                    required:
+                      description: required holds resources that are collected because the platform needs them.
+                      items:
+                        description: GroupVersionResource describes a versioned resource.
+                        properties:
+                          group:
+                            description: group is the group portion of the GroupVersionResource.
+                            type: string
+                          resource:
+                            description: resource is the resource portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                          version:
+                            description: version is the version portion of the GroupVersionResource.
+                            minLength: 1
+                            type: string
+                        required:
+                          - group
+                          - resource
+                          - version
+                        type: object
+                      type: array
+                  type: object
+                conditions:
+                  description: conditions hold conditions describing the state of this object.
+                  items:
+                    description: Condition contains details for one aspect of the current state of this API Resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          lastTransitionTime is the last time the condition transitioned from one status to another.
+                          This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          message is a human readable message indicating details about the transition.
+                          This may be an empty string.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          observedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: |-
+                          reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                          Producers of specific condition types may define expected values and meanings for this field,
+                          and whether the values are considered a guaranteed API.
+                          The value should be a CamelCase string.
+                          This field may not be empty.
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                kubernetesVersion:
+                  description: kubernetesVersion holds the discovered version of Kubernetes control plane.
+                  properties:
+                    major:
+                      description: major is the major part of the Kubernetes version.
+                      minLength: 1
+                      type: string
+                    minor:
+                      description: minor is the minor part of the Kubernetes version.
+                      minLength: 1
+                      type: string
+                  required:
+                    - major
+                    - minor
+                  type: object
+                observedGeneration:
+                  description: observedGeneration is the most recent generation observed for this object.
+                  format: int64
+                  type: integer
+                organizationID:
+                  description: organizationID is the unique ID of the organization that has registered this cluster.
+                  type: string
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

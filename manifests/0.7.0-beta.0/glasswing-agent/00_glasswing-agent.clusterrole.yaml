@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent
+  labels:
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.7.0-beta.0"
+    app.kubernetes.io/managed-by: Helm
+  
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.agent.glasswing.cloud/aggregate-to-controllers: "true"
+  - matchLabels:
+      rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
