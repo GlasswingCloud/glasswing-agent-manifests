@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glasswing-agent
+  namespace: glasswing-agent
+  labels:
+    
+    app: glasswing-agent
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.8.0-alpha.1"
+    app.kubernetes.io/managed-by: Helm
+  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: glasswing-agent
+      app.kubernetes.io/instance: glasswing-agent
+  minReadySeconds: 60
+  template:
+    metadata:
+      labels:
+        app: glasswing-agent
+        app.kubernetes.io/name: glasswing-agent
+        app.kubernetes.io/instance: glasswing-agent
+    spec:
+      shareProcessNamespace: true
+      volumes:
+        - name: shared-metadata
+          emptyDir: {}
+      priorityClassName: system-cluster-critical
+      serviceAccountName: glasswing-agent
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent
+        
+          image: "public.ecr.aws/m8h2t8d2/glasswing:0.8.0-alpha.1"
+        
+          args:
+             - agent
+             - --snapshot-interval=15s
+             - --v=5
+          imagePullPolicy: Always
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - name: shared-metadata
+              mountPath: /agent-metadata
+          env:
+            - name: SELF_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: API_URL
+              value: "https://gateway.glasswing.cloud"
+            - name: PROVIDER
+              value: "eks"
+            - name: ENABLE_VPA
+              value: "true"
+            - name: MONITOR_METADATA
+              value: /agent-metadata/metadata
+            - name: LEADER_ELECTION_ENABLED
+              value: "false"
+            - name: PPROF_PORT
+              value: "6060"
+          envFrom:
+            - secretRef:
+                name: glasswing-agent
+          resources: 
+              limits:
+                cpu: 800m
+                memory: 1024Mi
+              requests:
+                cpu: 500m
+                memory: 512Mi
+          ports:
+            - containerPort: 9876
+              name: healthz
