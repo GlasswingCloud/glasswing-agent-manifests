@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  namespace: glasswing-agent
+  name: glasswing-managed-services
+  labels:
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.7.0-rc.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  hard:
+    pods: 1G
+  scopeSelector:
+    matchExpressions:
+      - scopeName: PriorityClass
+        operator: In
+        values:
+          - system-cluster-critical
