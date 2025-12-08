@@ -1648,7 +1648,6 @@ rules:
   - get
   - list
   - watch
-  - null
 - apiGroups:
   - config.glasswing.cloud
   resources:
