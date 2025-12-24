@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:scraper:datadog
+  labels:
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.8.0-alpha.4"
+    app.kubernetes.io/managed-by: Helm
+  
+rules:
+- apiGroups:
+  - "datadoghq.com"
+  resources:
+  - extendeddaemonsetreplicasets
+  verbs:
+  - get
+  - list
+  - watch

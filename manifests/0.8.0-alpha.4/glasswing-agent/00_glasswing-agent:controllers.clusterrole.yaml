@@ -1,0 +1,78 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:controllers
+  labels:
+    rbac.agent.glasswing.cloud/aggregate-to-controllers: "true"
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.8.0-alpha.4"
+    app.kubernetes.io/managed-by: Helm
+
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+
+- apiGroups:
+  - "autoscaling.glasswing.cloud"
+  resources:
+  - recommendations
+  - recommendations/status
+  - oominfos
+  - oominfos/status
+  - verticalscalingconfigurations
+  - verticalscalingconfigurations/status
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+
+- apiGroups:
+  - "config.glasswing.cloud"
+  resources:
+  - agentconfigurations
+  - agentconfigurations/status
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+
+- apiGroups:
+  - "autoscaling.k8s.io"
+  resources:
+  - verticalpodautoscalers
+  - verticalpodautoscalers/status
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+
+- apiGroups:
+  - ""
+  resources:
+  - pods/eviction
+  verbs:
+  - create
