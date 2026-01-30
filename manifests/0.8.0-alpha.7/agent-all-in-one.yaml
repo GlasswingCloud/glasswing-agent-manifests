@@ -1,0 +1,2621 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-managed-services
+  namespace: glasswing-agent
+spec:
+  hard:
+    pods: 1G
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values:
+      - system-cluster-critical
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: agentconfigurations.config.glasswing.cloud
+spec:
+  group: config.glasswing.cloud
+  names:
+    kind: AgentConfiguration
+    listKind: AgentConfigurationList
+    plural: agentconfigurations
+    singular: agentconfiguration
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AgentConfiguration holds Agent configuration.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of this AgentConfiguration.
+            properties:
+              clusterName:
+                description: |-
+                  clusterName sets an explicit cluster name.
+                  If not set, the agent will try to infer it from cluster provider APIs.
+                type: string
+              providerTypes:
+                description: |-
+                  providerTypes sets infra providers to use.
+                  If not set, the agent will try to infer it from the cluster or infra provider APIs.
+                items:
+                  description: InfraProviderChoiceType defines which infra provider
+                    to use.
+                  enum:
+                  - Auto-detect
+                  - BareMetal
+                  - EKS
+                  - GKE
+                  - AKS
+                  type: string
+                maxItems: 1
+                type: array
+            type: object
+          status:
+            description: status is the current status of this AgentConfiguration.
+            properties:
+              cloudProvider:
+                description: |-
+                  cloudProvider is a name that identifies the infra provider that was in the Spec,
+                  or inferred by the agent.
+                enum:
+                - BareMetal
+                - EKS
+                - GKE
+                - AKS
+                type: string
+              clusterID:
+                description: clusterID is the unique and immutable ID of this Kubernetes
+                  cluster.
+                type: string
+              clusterName:
+                description: |-
+                  cluster name is the cluster name that was either set explicitly in the Spec,
+                  or inferred from the cluster provider APIs.
+                type: string
+              collectedResources:
+                description: required holds resources that are collected because the
+                  platform needs them.
+                properties:
+                  discovered:
+                    description: |-
+                      discovered holds the resources that have been marked for collection after
+                      inspecting Kubernetes discovery information.
+                      E.g., to find custom resources supporting /scale subresource.
+                    items:
+                      description: GroupVersionResource describes a versioned resource.
+                      properties:
+                        group:
+                          description: group is the group portion of the GroupVersionResource.
+                          type: string
+                        resource:
+                          description: resource is the resource portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                        version:
+                          description: version is the version portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - group
+                      - resource
+                      - version
+                      type: object
+                    type: array
+                  inaccessible:
+                    description: inaccessible holds resources that can't be collected
+                      due to insufficient permissions.
+                    items:
+                      description: InaccessibleResource describes a resource that
+                        didn't pass a SelfSubjectAccessReview before being collected.
+                      properties:
+                        denied:
+                          description: |-
+                            denied indicates whether this was an explicit denial.
+                            Authorizers are allowed to have no opinion.
+                          type: boolean
+                        group:
+                          description: group is the group portion of the GroupVersionResource.
+                          type: string
+                        resource:
+                          description: resource is the resource portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                        verb:
+                          description: verb is a kubernetes resource API verb.
+                          type: string
+                        version:
+                          description: version is the version portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - denied
+                      - group
+                      - resource
+                      - verb
+                      - version
+                      type: object
+                    type: array
+                  referenced:
+                    description: |-
+                      referenced holds resources that are collected because they are
+                      part of an owner reference chain from, or to a resource that's being collected.
+                    items:
+                      description: GroupVersionResource describes a versioned resource.
+                      properties:
+                        group:
+                          description: group is the group portion of the GroupVersionResource.
+                          type: string
+                        resource:
+                          description: resource is the resource portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                        version:
+                          description: version is the version portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - group
+                      - resource
+                      - version
+                      type: object
+                    type: array
+                  required:
+                    description: required holds resources that are collected because
+                      the platform needs them.
+                    items:
+                      description: GroupVersionResource describes a versioned resource.
+                      properties:
+                        group:
+                          description: group is the group portion of the GroupVersionResource.
+                          type: string
+                        resource:
+                          description: resource is the resource portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                        version:
+                          description: version is the version portion of the GroupVersionResource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - group
+                      - resource
+                      - version
+                      type: object
+                    type: array
+                  unavailable:
+                    description: |-
+                      unavailable holds resources that are not available in the cluster.
+                      (Like when their aggregated apiserver is down.)
+                    items:
+                      description: UnavailableGroup describes a resource that is not
+                        available / failed discovery.
+                      properties:
+                        group:
+                          description: group is the group portion of the GroupVersion.
+                          type: string
+                        message:
+                          description: message is a string describing why the resource
+                            is unavailable.
+                          type: string
+                        version:
+                          description: version is the version portion of the GroupVersion.
+                          minLength: 1
+                          type: string
+                      required:
+                      - group
+                      - message
+                      - version
+                      type: object
+                    type: array
+                type: object
+              conditions:
+                description: conditions hold conditions describing the state of this
+                  object.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              kubernetesVersion:
+                description: kubernetesVersion holds the discovered version of Kubernetes
+                  control plane.
+                properties:
+                  major:
+                    description: major is the major part of the Kubernetes version.
+                    minLength: 1
+                    type: string
+                  minor:
+                    description: minor is the minor part of the Kubernetes version.
+                    minLength: 1
+                    type: string
+                required:
+                - major
+                - minor
+                type: object
+              observedGeneration:
+                description: observedGeneration is the most recent generation observed
+                  for this object.
+                format: int64
+                type: integer
+              organizationID:
+                description: organizationID is the unique ID of the organization that
+                  has registered this cluster.
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: oominfos.autoscaling.glasswing.cloud
+spec:
+  group: autoscaling.glasswing.cloud
+  names:
+    kind: OomInfo
+    listKind: OomInfoList
+    plural: oominfos
+    shortNames:
+    - oom
+    - oomi
+    singular: oominfo
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: OomInfo is the Schema for the OomInfo API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              containerName:
+                description: The name of the container within the pod where the OOM
+                  event occurred.
+                type: string
+              memory:
+                anyOf:
+                - type: integer
+                - type: string
+                description: The memory usage at the time of the OOM event.
+                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                x-kubernetes-int-or-string: true
+              namespace:
+                description: The namespace where the OOM event occurred.
+                type: string
+              podName:
+                description: The name of the pod where the OOM event occurred.
+                type: string
+              timestamp:
+                description: The timestamp when the OOM event occurred.
+                format: date-time
+                type: string
+            type: object
+          status:
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: recommendations.autoscaling.glasswing.cloud
+spec:
+  group: autoscaling.glasswing.cloud
+  names:
+    kind: Recommendation
+    listKind: RecommendationList
+    plural: recommendations
+    shortNames:
+    - rec
+    - vpastat
+    singular: recommendation
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: Recommendation is the Schema for the recommendations API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of this Recommendation.
+            properties:
+              targetRef:
+                description: targetRef identifies the object this recommendation should
+                  be applied to.
+                properties:
+                  apiVersion:
+                    description: apiVersion is the api version of the object.
+                    type: string
+                  kind:
+                    description: kind is the kind of the object.
+                    type: string
+                  name:
+                    description: name is the name of the object.
+                    type: string
+                type: object
+            required:
+            - targetRef
+            type: object
+          status:
+            description: status is the current status of this Recommendation.
+            properties:
+              message:
+                description: message provides status detail.
+                type: string
+              phase:
+                description: phase describes the VPA phase.
+                enum:
+                - New
+                - InProgress
+                - Applied
+                - Failed
+                - Disabled
+                type: string
+              recommendationHash:
+                description: RecommendationHash is the hash of the recommendation
+                  content in VPA status.
+                type: string
+              updateTime:
+                description: updateTime represents the last update time.
+                format: date-time
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    api-approved.kubernetes.io: https://github.com/kubernetes/kubernetes/pull/63797
+  name: verticalpodautoscalercheckpoints.autoscaling.k8s.io
+spec:
+  group: autoscaling.k8s.io
+  names:
+    kind: VerticalPodAutoscalerCheckpoint
+    listKind: VerticalPodAutoscalerCheckpointList
+    plural: verticalpodautoscalercheckpoints
+    shortNames:
+    - vpacheckpoint
+    singular: verticalpodautoscalercheckpoint
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: VerticalPodAutoscalerCheckpoint is the checkpoint of the internal
+          state of VPA that is used for recovery after recommender's restart.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: 'Specification of the checkpoint. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status.'
+            properties:
+              containerName:
+                description: Name of the checkpointed container.
+                type: string
+              vpaObjectName:
+                description: Name of the VPA object that stored VerticalPodAutoscalerCheckpoint
+                  object.
+                type: string
+            type: object
+          status:
+            description: Data of the checkpoint.
+            properties:
+              cpuHistogram:
+                description: Checkpoint of histogram for consumption of CPU.
+                properties:
+                  bucketWeights:
+                    description: Map from bucket index to bucket weight.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  referenceTimestamp:
+                    description: Reference timestamp for samples collected within
+                      this histogram.
+                    format: date-time
+                    nullable: true
+                    type: string
+                  totalWeight:
+                    description: Sum of samples to be used as denominator for weights
+                      from BucketWeights.
+                    type: number
+                type: object
+              firstSampleStart:
+                description: Timestamp of the fist sample from the histograms.
+                format: date-time
+                nullable: true
+                type: string
+              lastSampleStart:
+                description: Timestamp of the last sample from the histograms.
+                format: date-time
+                nullable: true
+                type: string
+              lastUpdateTime:
+                description: The time when the status was last refreshed.
+                format: date-time
+                nullable: true
+                type: string
+              memoryHistogram:
+                description: Checkpoint of histogram for consumption of memory.
+                properties:
+                  bucketWeights:
+                    description: Map from bucket index to bucket weight.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  referenceTimestamp:
+                    description: Reference timestamp for samples collected within
+                      this histogram.
+                    format: date-time
+                    nullable: true
+                    type: string
+                  totalWeight:
+                    description: Sum of samples to be used as denominator for weights
+                      from BucketWeights.
+                    type: number
+                type: object
+              totalSamplesCount:
+                description: Total number of samples in the histograms.
+                type: integer
+              version:
+                description: Version of the format of the stored data.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    api-approved.kubernetes.io: https://github.com/kubernetes/kubernetes/pull/63797
+  name: verticalpodautoscalers.autoscaling.k8s.io
+spec:
+  group: autoscaling.k8s.io
+  names:
+    kind: VerticalPodAutoscaler
+    listKind: VerticalPodAutoscalerList
+    plural: verticalpodautoscalers
+    shortNames:
+    - vpa
+    singular: verticalpodautoscaler
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.updatePolicy.updateMode
+      name: Mode
+      type: string
+    - jsonPath: .status.recommendation.containerRecommendations[0].target.cpu
+      name: CPU
+      type: string
+    - jsonPath: .status.recommendation.containerRecommendations[0].target.memory
+      name: Mem
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='RecommendationProvided')].status
+      name: Provided
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: VerticalPodAutoscaler is the configuration for a vertical pod
+          autoscaler, which automatically manages pod resources based on historical
+          and real time resource utilization.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: 'Specification of the behavior of the autoscaler. More info:
+              https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status.'
+            properties:
+              recommenders:
+                description: Recommender responsible for generating recommendation
+                  for this object. List should be empty (then the default recommender
+                  will generate the recommendation) or contain exactly one recommender.
+                items:
+                  description: VerticalPodAutoscalerRecommenderSelector points to
+                    a specific Vertical Pod Autoscaler recommender. In the future
+                    it might pass parameters to the recommender.
+                  properties:
+                    name:
+                      description: Name of the recommender responsible for generating
+                        recommendation for this object.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              resourcePolicy:
+                description: Controls how the autoscaler computes recommended resources.
+                  The resource policy may be used to set constraints on the recommendations
+                  for individual containers. If any individual containers need to
+                  be excluded from getting the VPA recommendations, then it must be
+                  disabled explicitly by setting mode to "Off" under containerPolicies.
+                  If not specified, the autoscaler computes recommended resources
+                  for all containers in the pod, without additional constraints.
+                properties:
+                  containerPolicies:
+                    description: Per-container resource policies.
+                    items:
+                      description: ContainerResourcePolicy controls how autoscaler
+                        computes the recommended resources for a specific container.
+                      properties:
+                        containerName:
+                          description: Name of the container or DefaultContainerResourcePolicy,
+                            in which case the policy is used by the containers that
+                            don't have their own policy specified.
+                          type: string
+                        controlledResources:
+                          description: Specifies the type of recommendations that
+                            will be computed (and possibly applied) by VPA. If not
+                            specified, the default of [ResourceCPU, ResourceMemory]
+                            will be used.
+                          items:
+                            description: ResourceName is the name identifying various
+                              resources in a ResourceList.
+                            type: string
+                          type: array
+                        controlledValues:
+                          description: Specifies which resource values should be controlled.
+                            The default is "RequestsAndLimits".
+                          enum:
+                          - RequestsAndLimits
+                          - RequestsOnly
+                          type: string
+                        maxAllowed:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Specifies the maximum amount of resources that
+                            will be recommended for the container. The default is
+                            no maximum.
+                          type: object
+                        minAllowed:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Specifies the minimal amount of resources that
+                            will be recommended for the container. The default is
+                            no minimum.
+                          type: object
+                        mode:
+                          description: Whether autoscaler is enabled for the container.
+                            The default is "Auto".
+                          enum:
+                          - Auto
+                          - "Off"
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              targetRef:
+                description: TargetRef points to the controller managing the set of
+                  pods for the autoscaler to control - e.g. Deployment, StatefulSet.
+                  VerticalPodAutoscaler can be targeted at controller implementing
+                  scale subresource (the pod set is retrieved from the controller's
+                  ScaleStatus) or some well known controllers (e.g. for DaemonSet
+                  the pod set is read from the controller's spec). If VerticalPodAutoscaler
+                  cannot use specified target it will report ConfigUnsupported condition.
+                  Note that VerticalPodAutoscaler does not require full implementation
+                  of scale subresource - it will not use it to modify the replica
+                  count. The only thing retrieved is a label selector matching pods
+                  grouped by the target resource.
+                properties:
+                  apiVersion:
+                    description: API version of the referent
+                    type: string
+                  kind:
+                    description: 'Kind of the referent; More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    type: string
+                  name:
+                    description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                    type: string
+                required:
+                - kind
+                - name
+                type: object
+                x-kubernetes-map-type: atomic
+              updatePolicy:
+                description: Describes the rules on how changes are applied to the
+                  pods. If not specified, all fields in the `PodUpdatePolicy` are
+                  set to their default values.
+                properties:
+                  evictionRequirements:
+                    description: EvictionRequirements is a list of EvictionRequirements
+                      that need to evaluate to true in order for a Pod to be evicted.
+                      If more than one EvictionRequirement is specified, all of them
+                      need to be fulfilled to allow eviction.
+                    items:
+                      description: EvictionRequirement defines a single condition
+                        which needs to be true in order to evict a Pod
+                      properties:
+                        changeRequirement:
+                          description: EvictionChangeRequirement refers to the relationship
+                            between the new target recommendation for a Pod and its
+                            current requests, what kind of change is necessary for
+                            the Pod to be evicted
+                          enum:
+                          - TargetHigherThanRequests
+                          - TargetLowerThanRequests
+                          type: string
+                        resources:
+                          description: Resources is a list of one or more resources
+                            that the condition applies to. If more than one resource
+                            is given, the EvictionRequirement is fulfilled if at least
+                            one resource meets `changeRequirement`.
+                          items:
+                            description: ResourceName is the name identifying various
+                              resources in a ResourceList.
+                            type: string
+                          type: array
+                      required:
+                      - changeRequirement
+                      - resources
+                      type: object
+                    type: array
+                  minReplicas:
+                    description: Minimal number of replicas which need to be alive
+                      for Updater to attempt pod eviction (pending other checks like
+                      PDB). Only positive values are allowed. Overrides global '--min-replicas'
+                      flag.
+                    format: int32
+                    type: integer
+                  updateMode:
+                    description: Controls when autoscaler applies changes to the pod
+                      resources. The default is 'Auto'.
+                    enum:
+                    - "Off"
+                    - Initial
+                    - Recreate
+                    - Auto
+                    type: string
+                type: object
+            required:
+            - targetRef
+            type: object
+          status:
+            description: Current information about the autoscaler.
+            properties:
+              conditions:
+                description: Conditions is the set of conditions required for this
+                  autoscaler to scale its target, and indicates whether or not those
+                  conditions are met.
+                items:
+                  description: VerticalPodAutoscalerCondition describes the state
+                    of a VerticalPodAutoscaler at a certain point.
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human-readable explanation containing
+                        details about the transition
+                      type: string
+                    reason:
+                      description: reason is the reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: status is the status of the condition (True, False,
+                        Unknown)
+                      type: string
+                    type:
+                      description: type describes the current condition
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              recommendation:
+                description: The most recently computed amount of resources recommended
+                  by the autoscaler for the controlled pods.
+                properties:
+                  containerRecommendations:
+                    description: Resources recommended by the autoscaler for each
+                      container.
+                    items:
+                      description: RecommendedContainerResources is the recommendation
+                        of resources computed by autoscaler for a specific container.
+                        Respects the container resource policy if present in the spec.
+                        In particular the recommendation is not produced for containers
+                        with `ContainerScalingMode` set to 'Off'.
+                      properties:
+                        containerName:
+                          description: Name of the container.
+                          type: string
+                        lowerBound:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Minimum recommended amount of resources. Observes
+                            ContainerResourcePolicy. This amount is not guaranteed
+                            to be sufficient for the application to operate in a stable
+                            way, however running with less resources is likely to
+                            have significant impact on performance/availability.
+                          type: object
+                        target:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Recommended amount of resources. Observes ContainerResourcePolicy.
+                          type: object
+                        uncappedTarget:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: The most recent recommended resources target
+                            computed by the autoscaler for the controlled pods, based
+                            only on actual resource usage, not taking into account
+                            the ContainerResourcePolicy. May differ from the Recommendation
+                            if the actual resource usage causes the target to violate
+                            the ContainerResourcePolicy (lower than MinAllowed or
+                            higher that MaxAllowed). Used only as status indication,
+                            will not affect actual resource assignment.
+                          type: object
+                        upperBound:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Maximum recommended amount of resources. Observes
+                            ContainerResourcePolicy. Any resources allocated beyond
+                            this value are likely wasted. This value may be larger
+                            than the maximum amount of application is actually capable
+                            of consuming.
+                          type: object
+                      required:
+                      - target
+                      type: object
+                    type: array
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: verticalscalingconfigurations.autoscaling.glasswing.cloud
+spec:
+  group: autoscaling.glasswing.cloud
+  names:
+    kind: VerticalScalingConfiguration
+    listKind: VerticalScalingConfigurationList
+    plural: verticalscalingconfigurations
+    singular: verticalscalingconfiguration
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.updatePolicy.updateMode
+      name: Mode
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: VerticalScalingConfiguration defines how a workload should be
+          scaled.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of this VerticalScalingConfiguration.
+            properties:
+              recommenderOptions:
+                default:
+                  headroom:
+                    cpuPercentage: 15
+                    memoryPercentage: 15
+                  historyPercentile:
+                    cpu: p80
+                    memory: p80
+                  historyWindowSizeSeconds: 1209600
+                description: recommenderOptions defines tunable options for the recommender.
+                properties:
+                  headroom:
+                    default:
+                      cpuPercentage: 15
+                      memoryPercentage: 15
+                    description: |-
+                      headroom is a multiplier that allows you to raise the default recommendation.
+                      It gets applied using the following formula:
+                        `resource = resource * (1 + headroom)`
+                    properties:
+                      cpuPercentage:
+                        default: 15
+                        description: cpuPercentage describes the extra headroom for
+                          cpu resource.
+                        format: int32
+                        maximum: 100
+                        minimum: 0
+                        type: integer
+                      memoryPercentage:
+                        default: 15
+                        description: |-
+                          memoryPercentage describes the extra headroom for memory resource.
+                          memory describes the Memory resource quantity.
+                        format: int32
+                        maximum: 100
+                        minimum: 0
+                        type: integer
+                    required:
+                    - cpuPercentage
+                    - memoryPercentage
+                    type: object
+                  historyPercentile:
+                    default:
+                      cpu: p80
+                      memory: p80
+                    description: historyPercentile allows to adjust the resource percentile
+                      used for recommendation.
+                    properties:
+                      cpu:
+                        description: cpu describes the CPU percentile.
+                        enum:
+                        - p50
+                        - p60
+                        - p70
+                        - p80
+                        - p90
+                        - p95
+                        type: string
+                      memory:
+                        description: memory describes the Memory percentile.
+                        enum:
+                        - p50
+                        - p60
+                        - p70
+                        - p80
+                        - p90
+                        - p95
+                        type: string
+                    required:
+                    - cpu
+                    - memory
+                    type: object
+                  historyWindowSizeSeconds:
+                    default: 1209600
+                    description: |-
+                      historyWindowSizeSeconds defines the size of a time window that's relevant for the recommendation.
+                      (Roughly, this should be at least 2x the period of a related recurring pattern in the system.)
+                    format: int32
+                    maximum: 2592000
+                    minimum: 86400
+                    type: integer
+                required:
+                - headroom
+                - historyPercentile
+                - historyWindowSizeSeconds
+                type: object
+              resourcePolicy:
+                description: resourcePolicy defines options for scaling the Pod.
+                properties:
+                  containerPolicies:
+                    description: containerPolicies defines policy for containers.
+                    items:
+                      description: ContainerResourcePolicy defines how to handle container
+                        scaling.
+                      properties:
+                        containerName:
+                          description: |-
+                            containerName is the name of the container.
+                            Use '*' to match all containers that do not have explicit policy defined in this array.
+                          example: '*'
+                          minLength: 1
+                          type: string
+                        controlledValues:
+                          default: RequestsAndLimits
+                          description: Specifies which resource values should be controlled.
+                          enum:
+                          - RequestsAndLimits
+                          - RequestsOnly
+                          type: string
+                        maxAllowed:
+                          description: |-
+                            maxAllowed specifies the maximum amount of resources that will be recommended for the container.
+                            Empty quantities mean there is no limit.
+                          example:
+                            cpu: "2"
+                            memory: 4Gi
+                          properties:
+                            cpu:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: cpu describes the CPU resource quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            memory:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: memory describes the Memory resource quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - cpu
+                          - memory
+                          type: object
+                        minAllowed:
+                          description: |-
+                            minAllowed specifies the minimal amount of resources that will be recommended for the container.
+                            Empty quantities mean there is no limit.
+                          example:
+                            cpu: 500m
+                            memory: 1Gi
+                          properties:
+                            cpu:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: cpu describes the CPU resource quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            memory:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: memory describes the Memory resource quantity.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - cpu
+                          - memory
+                          type: object
+                        mode:
+                          default: Auto
+                          description: mode defines whether the scaling applies to
+                            this container.
+                          enum:
+                          - Auto
+                          - Disabled
+                          type: string
+                      required:
+                      - containerName
+                      - controlledValues
+                      - maxAllowed
+                      - minAllowed
+                      - mode
+                      type: object
+                    minItems: 1
+                    type: array
+                required:
+                - containerPolicies
+                type: object
+              targetRef:
+                description: |-
+                  targetRef selects the workload controller to scale, e.g. Deployment, StatefulSet or a customer resource.
+                  Workloads are required to provide `/scale` subresource.
+                properties:
+                  apiVersion:
+                    description: apiVersion is the group/version of the resource being
+                      referenced.
+                    type: string
+                  kind:
+                    description: kind is the type of resource being referenced.
+                    minLength: 1
+                    type: string
+                  name:
+                    description: Name is the name of resource being referenced
+                    minLength: 1
+                    type: string
+                required:
+                - apiVersion
+                - kind
+                - name
+                type: object
+              updatePolicy:
+                default:
+                  updateMode: Auto
+                description: updatePolicy defines options for scaling the Pod.
+                properties:
+                  updateMode:
+                    default: Auto
+                    description: updateMode controls when autoscaler applies changes
+                      to the Pod resources.
+                    enum:
+                    - Disabled
+                    - Initial
+                    - Recreate
+                    - Auto
+                    type: string
+                required:
+                - updateMode
+                type: object
+            required:
+            - recommenderOptions
+            - resourcePolicy
+            - targetRef
+            - updatePolicy
+            type: object
+          status:
+            description: status is the current status of this VerticalScalingConfiguration.
+            properties:
+              conditions:
+                description: conditions hold conditions describing VerticalScalingConfiguration
+                  state.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: |-
+                  observedGeneration is the most recent generation observed for this VerticalScalingConfiguration.
+                  It corresponds to the VerticalScalingConfiguration's generation, which is updated on mutation by the API Server.
+                format: int64
+                type: integer
+            required:
+            - conditions
+            - observedGeneration
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admission-controller
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-generator-sa
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vpa-admission-controller
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vpa-recommender
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vpa-updater
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-generator-role
+  namespace: glasswing-agent
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+  namespace: glasswing-agent
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: glasswing-agent:leader-locking-vpa-recommender
+  namespace: glasswing-agent
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resourceNames:
+  - vpa-recommender
+  resources:
+  - leases
+  verbs:
+  - get
+  - watch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: glasswing-agent:leader-locking-vpa-updater
+  namespace: glasswing-agent
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resourceNames:
+  - vpa-updater
+  resources:
+  - leases
+  verbs:
+  - get
+  - watch
+  - update
+---
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.agent.glasswing.cloud/aggregate-to-controllers: "true"
+  - matchLabels:
+      rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.agent.glasswing.cloud/aggregate-to-controllers: "true"
+  name: glasswing-agent:controllers
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - autoscaling.glasswing.cloud
+  resources:
+  - recommendations
+  - recommendations/status
+  - oominfos
+  - oominfos/status
+  - verticalscalingconfigurations
+  - verticalscalingconfigurations/status
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - config.glasswing.cloud
+  resources:
+  - agentconfigurations
+  - agentconfigurations/status
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - autoscaling.k8s.io
+  resources:
+  - verticalpodautoscalers
+  - verticalpodautoscalers/status
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - pods/eviction
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+  name: glasswing-agent:evictioner
+rules:
+- apiGroups:
+  - apps
+  - extensions
+  resources:
+  - replicasets
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - pods/eviction
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+  name: glasswing-agent:scraper:argo
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - rollouts
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+  name: glasswing-agent:scraper:datadog
+rules:
+- apiGroups:
+  - datadoghq.com
+  resources:
+  - extendeddaemonsetreplicasets
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+  name: glasswing-agent:scraper:dynamic
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+  name: glasswing-agent:scraper:glasswing
+rules:
+- apiGroups:
+  - autoscaling.glasswing.cloud
+  resources:
+  - recommendations
+  - oominfos
+  - verticalscalingconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - config.glasswing.cloud
+  resources:
+  - agentconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+  name: glasswing-agent:scraper:kubernetes
+rules:
+- nonResourceURLs:
+  - /version
+  verbs:
+  - get
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  - pods
+  - nodes
+  - replicationcontrollers
+  - persistentvolumeclaims
+  - persistentvolumes
+  - services
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - replicasets
+  - daemonsets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  - csinodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - autoscaling.k8s.io
+  resources:
+  - verticalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - admissionregistration
+  resources:
+  - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+  name: glasswing-agent:vpa-actor
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  - limitranges
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+- apiGroups:
+  - autoscaling.k8s.io
+  resources:
+  - verticalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+  name: glasswing-agent:vpa-admission-controller
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - configmaps
+  - nodes
+  - limitranges
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+- apiGroups:
+  - autoscaling.k8s.io
+  resources:
+  - verticalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - update
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resourceNames:
+  - vpa-tls-certs
+  resources:
+  - secrets
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:vpa-status-actor
+rules:
+- apiGroups:
+  - autoscaling.k8s.io
+  resources:
+  - verticalpodautoscalers/status
+  verbs:
+  - get
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+  name: glasswing-agent:vpa-status-reader
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: glasswing-vpa
+  name: glasswing-agent:vpa-target-reader
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*/scale'
+  verbs:
+  - get
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - replicationcontrollers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+  name: glasswing:edit
+rules:
+- apiGroups:
+  - autoscaling.glasswing.cloud
+  resources:
+  - verticalscalingconfigurations
+  verbs:
+  - create
+  - patch
+  - update
+  - delete
+  - deletecollection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+  name: glasswing:view
+rules:
+- apiGroups:
+  - autoscaling.glasswing.cloud
+  resources:
+  - verticalscalingconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-app: metrics-server
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: system:aggregated-metrics-reader
+rules:
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: system:metrics-server
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes/metrics
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-generator-rolebinding
+  namespace: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-generator-role
+subjects:
+- kind: ServiceAccount
+  name: cert-generator-sa
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+  namespace: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: glasswing-agent
+subjects:
+- kind: ServiceAccount
+  name: glasswing-agent
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: glasswing-agent:leader-locking-vpa-recommender
+  namespace: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: glasswing-agent:leader-locking-vpa-recommender
+subjects:
+- kind: ServiceAccount
+  name: vpa-recommender
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: glasswing-agent:leader-locking-vpa-updater
+  namespace: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: glasswing-agent:leader-locking-vpa-updater
+subjects:
+- kind: ServiceAccount
+  name: vpa-updater
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent
+subjects:
+- kind: ServiceAccount
+  name: glasswing-agent
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: glasswing-agent:vpa-actor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent:vpa-actor
+subjects:
+- kind: ServiceAccount
+  name: vpa-updater
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: glasswing-agent:vpa-admission-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent:vpa-admission-controller
+subjects:
+- kind: ServiceAccount
+  name: vpa-admission-controller
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: glasswing-agent:vpa-evictioner-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent:evictioner
+subjects:
+- kind: ServiceAccount
+  name: vpa-updater
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: glasswing-agent:vpa-status-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent:vpa-status-reader
+subjects:
+- kind: ServiceAccount
+  name: vpa-updater
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: glasswing-agent:vpa-target-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent:vpa-target-reader
+subjects:
+- kind: ServiceAccount
+  name: vpa-admission-controller
+  namespace: glasswing-agent
+- kind: ServiceAccount
+  name: vpa-updater
+  namespace: glasswing-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: system:metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:metrics-server
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+  namespace: glasswing-agent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpa-webhook
+  namespace: glasswing-agent
+spec:
+  ports:
+  - port: 443
+    targetPort: 8443
+  selector:
+    app: vpa-admission-controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: https
+  selector:
+    k8s-app: metrics-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/version: 0.8.0-alpha.7
+    helm.sh/chart: glasswing-agent-0.0.0
+  name: glasswing-agent
+  namespace: glasswing-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: glasswing-agent
+      app.kubernetes.io/name: glasswing-agent
+  template:
+    metadata:
+      labels:
+        app: glasswing-agent
+        app.kubernetes.io/instance: glasswing-agent
+        app.kubernetes.io/name: glasswing-agent
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - args:
+        - agent
+        - --snapshot-interval=15s
+        - --v=5
+        env:
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: API_URL
+          value: https://gateway.glasswing.cloud
+        - name: ENABLE_VPA
+          value: "true"
+        envFrom:
+        - secretRef:
+            name: glasswing-agent
+        image: public.ecr.aws/m8h2t8d2/glasswing:0.8.0-alpha.7
+        imagePullPolicy: Always
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /usr/bin/sleep
+              - 15s
+        name: agent
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /readyz
+            port: 9876
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 800m
+            memory: 1024Mi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        terminationMessagePolicy: FallbackToLogsOnError
+      priorityClassName: system-cluster-critical
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: glasswing-agent
+      shareProcessNamespace: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpa-admission-controller
+  namespace: glasswing-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpa-admission-controller
+  template:
+    metadata:
+      labels:
+        app: vpa-admission-controller
+    spec:
+      containers:
+      - args:
+        - --v=4
+        - --stderrthreshold=info
+        - --reload-cert
+        - --port=8443
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: registry.k8s.io/autoscaling/vpa-admission-controller:1.2.1
+        imagePullPolicy: Always
+        name: admission-controller
+        ports:
+        - containerPort: 8443
+        - containerPort: 8944
+          name: prometheus
+        resources:
+          limits:
+            cpu: 200m
+            memory: 1000Mi
+          requests:
+            cpu: 50m
+            memory: 500Mi
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /etc/tls-certs
+          name: tls-certs
+          readOnly: true
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do
+            secret_inited=$(kubectl get secret vpa-tls-certs -n glasswing-agent -o jsonpath='{.data.caCert\.pem}' | grep -q . && echo "true" || echo "false")
+            if [ "$secret_inited" = "true" ]; then
+              echo "Secret vpa-tls-certs is ready."
+              break
+            else
+              echo "Waiting for Secret vpa-tls-certs to be ready..."
+              sleep 5
+            fi
+          done
+        image: quay.io/glasswing/kubectl:1.33.4-bitnami
+        imagePullPolicy: IfNotPresent
+        name: wait-for-tls-ready
+        terminationMessagePolicy: FallbackToLogsOnError
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: vpa-admission-controller
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: vpa-tls-certs
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpa-updater
+  namespace: glasswing-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpa-updater
+  template:
+    metadata:
+      labels:
+        app: vpa-updater
+    spec:
+      containers:
+      - env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: registry.k8s.io/autoscaling/vpa-updater:1.2.1
+        imagePullPolicy: Always
+        name: updater
+        ports:
+        - containerPort: 8943
+          name: prometheus
+        resources:
+          limits:
+            cpu: 200m
+            memory: 1000Mi
+          requests:
+            cpu: 50m
+            memory: 500Mi
+        terminationMessagePolicy: FallbackToLogsOnError
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: vpa-updater
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: metrics-server
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                k8s-app: metrics-server
+            namespaces:
+            - kube-system
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - args:
+        - --cert-dir=/tmp
+        - --secure-port=10250
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-use-node-status-port
+        - --metric-resolution=15s
+        image: registry.k8s.io/metrics-server/metrics-server:v0.7.2
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          periodSeconds: 10
+        name: metrics-server
+        ports:
+        - containerPort: 10250
+          name: https
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-dir
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-cluster-critical
+      serviceAccountName: metrics-server
+      volumes:
+      - emptyDir: {}
+        name: tmp-dir
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: v1beta1.metrics.k8s.io
+spec:
+  group: metrics.k8s.io
+  groupPriorityMinimum: 100
+  insecureSkipTLSVerify: true
+  service:
+    name: metrics-server
+    namespace: kube-system
+  version: v1beta1
+  versionPriority: 100
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-tls-secret
+  namespace: glasswing-agent
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /tmp/vpa-certs
+          cat > /tmp/vpa-certs/server.conf << EOF
+          [req]
+          req_extensions = v3_req
+          distinguished_name = req_distinguished_name
+          [req_distinguished_name]
+          [ v3_req ]
+          basicConstraints = CA:FALSE
+          keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+          extendedKeyUsage = clientAuth, serverAuth
+          subjectAltName = DNS:vpa-webhook.glasswing-agent.svc
+          EOF
+
+          # Create a certificate authority
+          openssl genrsa -out /tmp/vpa-certs/caKey.pem 2048
+          set +o errexit
+          openssl req -x509 -new -nodes -key /tmp/vpa-certs/caKey.pem -days 100000 -out /tmp/vpa-certs/caCert.pem -subj "/CN=vpa_webhook_ca" -addext "subjectAltName = DNS:vpa_webhook_ca"
+          if [[ $? -ne 0 ]]; then
+            echo "ERROR: Failed to create CA certificate for self-signing. If the error is \"unknown option -addext\", update your openssl version or deploy VPA from the vpa-release-0.8 branch."
+            exit 1
+          fi
+          set -o errexit
+
+          # Create a server certificate
+          openssl genrsa -out /tmp/vpa-certs/serverKey.pem 2048
+
+          # Note the CN is the DNS name of the service of the webhook.
+          openssl req -new -key /tmp/vpa-certs/serverKey.pem -out /tmp/vpa-certs/server.csr -subj "/CN=vpa-webhook.glasswing-agent.svc" -config /tmp/vpa-certs/server.conf
+          openssl x509 -req -in /tmp/vpa-certs/server.csr -CA /tmp/vpa-certs/caCert.pem -CAkey /tmp/vpa-certs/caKey.pem -CAcreateserial -out /tmp/vpa-certs/serverCert.pem -days 100000 -extensions SAN -extensions v3_req -extfile /tmp/vpa-certs/server.conf
+
+          echo "Uploading certs to the cluster."
+          kubectl create secret --namespace=glasswing-agent generic vpa-tls-certs --from-file=/tmp/vpa-certs/caKey.pem --from-file=/tmp/vpa-certs/caCert.pem --from-file=/tmp/vpa-certs/serverKey.pem --from-file=/tmp/vpa-certs/serverCert.pem --dry-run=client -o yaml | kubectl apply --server-side --field-manager=gw-cert-generator -f -
+
+          echo "set secret to immutable"
+          kubectl patch secret vpa-tls-certs --namespace=glasswing-agent -p '{"immutable":true}'
+        image: quay.io/glasswing/kubectl:1.33.4-bitnami
+        name: cert-generator
+        resources:
+          limits:
+            cpu: 100m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 100Mi
+      restartPolicy: OnFailure
+      serviceAccountName: cert-generator-sa
