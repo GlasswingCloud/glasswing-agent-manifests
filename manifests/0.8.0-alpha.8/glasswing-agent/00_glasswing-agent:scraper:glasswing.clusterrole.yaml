@@ -1,0 +1,32 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glasswing-agent:scraper:glasswing
+  labels:
+    rbac.agent.glasswing.cloud/aggregate-to-scraper: "true"
+    
+    helm.sh/chart: glasswing-agent-0.0.0
+    app.kubernetes.io/name: glasswing-agent
+    app.kubernetes.io/instance: glasswing-agent
+    app.kubernetes.io/version: "0.8.0-alpha.8"
+    app.kubernetes.io/managed-by: Helm
+  
+rules:
+- apiGroups:
+  - "autoscaling.glasswing.cloud"
+  resources:
+  - recommendations
+  - oominfos
+  - verticalscalingconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "config.glasswing.cloud"
+  resources:
+  - agentconfigurations
+  verbs:
+  - get
+  - list
+  - watch
