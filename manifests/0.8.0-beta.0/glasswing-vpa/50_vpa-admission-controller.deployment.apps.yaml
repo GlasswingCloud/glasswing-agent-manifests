@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vpa-admission-controller
+  namespace: glasswing-agent
+  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vpa-admission-controller
+  template:
+    metadata:
+      labels:
+        app: vpa-admission-controller
+    spec:
+      serviceAccountName: vpa-admission-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534 # nobody
+      initContainers:
+        - name: wait-for-tls-ready
+          image: quay.io/glasswing/kubectl:1.33.4-bitnami
+          imagePullPolicy: IfNotPresent
+          terminationMessagePolicy: FallbackToLogsOnError
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                secret_inited=$(kubectl get secret vpa-tls-certs -n glasswing-agent -o jsonpath='{.data.caCert\.pem}' | grep -q . && echo "true" || echo "false")
+                if [ "$secret_inited" = "true" ]; then
+                  echo "Secret vpa-tls-certs is ready."
+                  break
+                else
+                  echo "Waiting for Secret vpa-tls-certs to be ready..."
+                  sleep 5
+                fi
+              done
+      containers:
+        - name: admission-controller
+          image: "registry.k8s.io/autoscaling/vpa-admission-controller:1.2.1"
+          imagePullPolicy: "Always"
+          terminationMessagePolicy: FallbackToLogsOnError
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args: ["--v=4", "--stderrthreshold=info", "--reload-cert",--port=8443]
+          volumeMounts:
+            - name: tls-certs
+              mountPath: "/etc/tls-certs"
+              readOnly: true
+          ports:
+            - containerPort: 8443
+            - name: prometheus
+              containerPort: 8944
+          resources:
+            limits:
+              cpu: 200m
+              memory: 1000Mi
+            requests:
+              cpu: 50m
+              memory: 500Mi
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: vpa-tls-certs
