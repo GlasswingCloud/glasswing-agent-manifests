@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: glasswing-agent-operator
+  name: glasswing-agent-operator
+  labels:
+    app: glasswing-agent-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: glasswing-agent-operator
+  template:
+    metadata:
+      labels:
+        app: glasswing-agent-operator
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccountName: glasswing-agent-operator
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: operator
+          image: "quay.io/glasswing/agent-operator:0.9.0-alpha.1"
+          command:
+            - /usr/local/bin/glasswing-agent-operator
+            - run
+            - --v=2
+          imagePullPolicy: Always
+          terminationMessagePolicy: FallbackToLogsOnError
+          resources:
+            limits:
+              cpu: 250m
+              memory: 250Mi
+            requests:
+              cpu: 250m
+              memory: 250Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 1
