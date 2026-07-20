@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  namespace: glasswing-agent-operator
+  name: glasswing-managed-services
+spec:
+  hard:
+    pods: 1G
+  scopeSelector:
+    matchExpressions:
+    - scopeName: PriorityClass
+      operator: In
+      values:
+      - system-cluster-critical
