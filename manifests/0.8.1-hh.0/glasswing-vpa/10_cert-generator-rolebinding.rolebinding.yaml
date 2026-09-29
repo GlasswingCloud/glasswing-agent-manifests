@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-generator-rolebinding
+  namespace: glasswing-agent
+subjects:
+- kind: ServiceAccount
+  name: cert-generator-sa
+  namespace: glasswing-agent
+roleRef:
+  kind: Role
+  name: cert-generator-role
+  apiGroup: rbac.authorization.k8s.io
