@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: glasswing-agent:vpa-evictioner-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: glasswing-agent:evictioner
+subjects:
+  - kind: ServiceAccount
+    name: vpa-updater
+    namespace: glasswing-agent
