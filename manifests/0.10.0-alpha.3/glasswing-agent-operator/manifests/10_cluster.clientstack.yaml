@@ -1,0 +1,5 @@
+apiVersion: operator.glasswing.cloud/v1alpha1
+kind: ClientStack
+metadata:
+  name: cluster
+spec: {}
